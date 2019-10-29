@@ -183,7 +183,7 @@ void handleRoot() {
   amonia = 0;
   corrente = 0;
   
-  Serial.print("esp01:an=");
+  Serial.print("{esp01:an=");
   Serial.print(formatarValor(contador_anem));
   Serial.print(",esp01:tp=");
   Serial.print(temperatura, 2);
@@ -201,7 +201,7 @@ void handleRoot() {
   Serial.print(pressao, 2);
   Serial.print(",esp01:bl=");
   Serial.print(formatarValor(balanca));
-  Serial.println(",");
+  Serial.println(",}");
   
 }
 
