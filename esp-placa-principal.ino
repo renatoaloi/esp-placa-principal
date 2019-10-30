@@ -1,6 +1,8 @@
 #include <ESP8266WiFi.h>
+#include <FS.h>
 
 #define     MAXSC     6           // MAXIMUM NUMBER OF CLIENTS
+#define     INTERVALO_SERIAL 30000 // 30 segundos
 
 const int  porta = 9001;
 const char *ssid = "SystemSegPlaca1";
@@ -18,6 +20,7 @@ int corrente;
 int lux;
 float peso;
 int balanca;
+unsigned long tempoSerial;
 
 IPAddress ip = IPAddress(192, 168, 10, 1);
 IPAddress subnet = IPAddress(255, 255, 255, 0);
@@ -57,6 +60,8 @@ void SetWifi()
   ESPServer.begin();
   ESPServer.setNoDelay(true);
   //Serial.println("Server Started");
+
+  tempoSerial = millis() + INTERVALO_SERIAL;
 }
 
 void AvailableClients()
@@ -182,27 +187,35 @@ void handleRoot() {
   // Para uso futuro
   amonia = 0;
   corrente = 0;
-  
-  Serial.print("{esp01:an=");
-  Serial.print(formatarValor(contador_anem));
-  Serial.print(",esp01:tp=");
-  Serial.print(temperatura, 2);
-  Serial.print(",esp01:um=");
-  Serial.print(umidade, 2);
-  Serial.print(",esp01:am=");
-  Serial.print(formatarValor(amonia));
-  Serial.print(",esp01:co=");
-  Serial.print(formatarValor(corrente));
-  Serial.print(",esp01:lu=");
-  Serial.print(formatarValor(lux));
-  Serial.print(",esp01:pe=");
-  Serial.print(peso, 3);
-  Serial.print(",esp01:pr=");
-  Serial.print(pressao, 2);
-  Serial.print(",esp01:bl=");
-  Serial.print(formatarValor(balanca));
-  Serial.println(",}");
-  
+
+  String msg = "{esp01:an=";
+  msg += String(formatarValor(contador_anem));
+  msg += ",esp01:tp=";
+  msg += String(temperatura, 2);
+  msg += ",esp01:um=";
+  msg += String(umidade, 2);
+  msg += ",esp01:am=";
+  msg += String(formatarValor(amonia));
+  msg += ",esp01:co=";
+  msg += String(formatarValor(corrente));
+  msg += ",esp01:lu=";
+  msg += String(formatarValor(lux));
+  msg += ",esp01:pe=";
+  msg += String(peso, 3);
+  msg += ",esp01:pr=";
+  msg += String(pressao, 2);
+  msg += ",esp01:bl=";
+  msg += String(formatarValor(balanca));
+  msg += ",}";
+
+  saveMsgPos(msg.c_str());
+}
+
+void enviaSerial() {
+  if (qtdeMsgPos()) {
+    String msg = readMsgPos();
+    Serial.println(msg);
+  }
 }
 
 void setup() 
@@ -213,10 +226,22 @@ void setup()
   // Setting Up A Wifi Access Point
   SetWifi();
 
+  // Iniciando sistema de arquivos
+  SPIFFS.begin();
+
+  // Formatando o sistema de arquivos no primeiro uso
+  SPIFFS.format();
+
   //Serial.println("ESP configurado!");
 }
 
 void loop() {
   AvailableClients();     // Checking For Available Clients
   AvailableMessage();     // Checking For Available Client Messages
+
+  // Tratando envio da serial pelo tempo
+  if (tempoSerial < millis()) {
+    enviaSerial();
+    tempoSerial = millis() + INTERVALO_SERIAL;
+  }
 }
