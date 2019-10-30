@@ -3,6 +3,7 @@
 
 #define     MAXSC     6           // MAXIMUM NUMBER OF CLIENTS
 #define     INTERVALO_SERIAL 30000 // 30 segundos
+#define     DEBUG 1 // atribuir zero na hora de conectar no MEGA
 
 const int  porta = 9001;
 const char *ssid = "SystemSegPlaca1";
@@ -49,17 +50,17 @@ void SetWifi()
   IPAddress IP = WiFi.softAPIP();
   
   // Printing The Server IP Address
-  //Serial.print("AccessPoint IP : ");
-  //Serial.println(IP);
+  if (DEBUG) Serial.print("AccessPoint IP : ");
+  if (DEBUG) Serial.println(IP);
 
   // Printing MAC Address
-  //Serial.print("AccessPoint MC : ");
-  //Serial.println(String(WiFi.softAPmacAddress()));
+  if (DEBUG) Serial.print("AccessPoint MC : ");
+  if (DEBUG) Serial.println(String(WiFi.softAPmacAddress()));
 
   // Starting Server
   ESPServer.begin();
   ESPServer.setNoDelay(true);
-  //Serial.println("Server Started");
+  if (DEBUG) Serial.println("Server Started");
 
   tempoSerial = millis() + INTERVALO_SERIAL;
 }
@@ -68,29 +69,29 @@ void AvailableClients()
 {   
   if (ESPServer.hasClient())
   {
-    //Serial.println("Chegou cliente!");
+    if (DEBUG) Serial.println("Chegou cliente!");
     
     for(uint8_t i = 0; i < MAXSC; i++)
     {
-      //Serial.print("Verificando cliente: ");
-      //Serial.println(i);
+      if (DEBUG) Serial.print("Verificando cliente: ");
+      if (DEBUG) Serial.println(i);
       
       //find free/disconnected spot
       if (!ESPClient[i] || !ESPClient[i].connected())
       {
-        //Serial.println("Achei um cliente livre!");
+        if (DEBUG) Serial.println("Achei um cliente livre!");
         
         // Checks If Previously The Client Is Taken
         if(ESPClient[i])
         {
-          //Serial.println("Cliente já utilizado!");
+          if (DEBUG) Serial.println("Cliente já utilizado!");
           ESPClient[i].stop();
         }
 
         // Clients Connected To The Server
         if(ESPClient[i] = ESPServer.available()) {
 
-          //Serial.println("Cliente disponivel conectado!");
+          if (DEBUG) Serial.println("Cliente disponivel conectado!");
         }
 
         // Continue Scanning
@@ -98,7 +99,7 @@ void AvailableClients()
       }
     }
 
-    //Serial.println("Terminando conexao de cliente!");
+    if (DEBUG) Serial.println("Terminando conexao de cliente!");
     
     //no free/disconnected spot so reject
     WiFiClient ESPClient = ESPServer.available();
@@ -111,19 +112,13 @@ void AvailableMessage()
   //check clients for data
   for(uint8_t i = 0; i < MAXSC; i++)
   {
-    //Serial.print("Verificando se chegou mensagem no cliente: ");
-    //Serial.println(i);
-      
     if (ESPClient[i] && ESPClient[i].connected() && ESPClient[i].available())
     {
-      //Serial.println("Achei um cliente conectado e livre!");
+      if (DEBUG) Serial.println("Achei um cliente conectado e livre!");
 
       bool achei = false;
         while(ESPClient[i].available())
-        {
-          //delay(1000);
-          //Message += ESPClient[i].readStringUntil('\r');
-          //ESPClient[i].flush();         
+        {         
           int inChar = ESPClient[i].read();
           if (inChar != '\n') {
             Message += (char)inChar;
@@ -134,7 +129,7 @@ void AvailableMessage()
         }
 
         if (achei) {
-          //Serial.println("Client No " + String(i+1) + " - " + Message); 
+          if (DEBUG) Serial.println("Client No " + String(i+1) + " - " + Message); 
           handleRoot();
           Message = "";
         } 
@@ -159,7 +154,7 @@ String formatarValor(int valor)
 
 void handleRoot() {
 
-  //Serial.println("Tratando handleRoot");
+  if (DEBUG) Serial.println("Tratando handleRoot");
     
   idxPe = 0;
   idxAn = Message.indexOf(",an=");
@@ -209,11 +204,21 @@ void handleRoot() {
   msg += ",}";
 
   saveMsgPos(msg.c_str());
+
+  if (DEBUG) { Serial.print("Salvei: "); Serial.println(msg); }
 }
 
 void enviaSerial() {
-  if (qtdeMsgPos()) {
+  int q = qtdeMsgPos();
+
+  if (DEBUG) { Serial.print("qtde a enviar: "); Serial.println(q); }
+  
+  if (q) {
+    
     String msg = readMsgPos();
+
+    if (DEBUG) { Serial.print("Enviando msg: "); Serial.println(msg); }
+    
     Serial.println(msg);
   }
 }
@@ -232,7 +237,7 @@ void setup()
   // Formatando o sistema de arquivos no primeiro uso
   SPIFFS.format();
 
-  //Serial.println("ESP configurado!");
+  if (DEBUG) Serial.println("ESP configurado!");
 }
 
 void loop() {
@@ -241,6 +246,9 @@ void loop() {
 
   // Tratando envio da serial pelo tempo
   if (tempoSerial < millis()) {
+
+    if (DEBUG) Serial.println("Vou enviar dados para o MEGA...");
+    
     enviaSerial();
     tempoSerial = millis() + INTERVALO_SERIAL;
   }
